@@ -15,6 +15,7 @@ An iCalendar document is a tree of *components* (`VCALENDAR` containing
 - builds a component tree you can query (`children_named`, `get`, typed accessors),
 - serializes it back with correct 75-octet line folding,
 - parses recurrence rules (`RRULE`) and expands them into concrete occurrences,
+- combines `RDATE` / `EXDATE` into an event's complete occurrence set,
 - parses `VTIMEZONE` components and resolves floating times to UTC through them.
 
 ## A taste
@@ -58,6 +59,10 @@ FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1   the last weekday
 For all-day events whose `DTSTART` is a `DATE` (a birthday, a holiday), use
 `expand_dates(rule, start)` to get `DATE`s directly — the time-of-day is
 dropped, so `BYHOUR` / `BYMINUTE` / `BYSECOND` are rejected.
+
+For the complete set of a timed event — `DTSTART` plus its `RRULE` expansion,
+plus every `RDATE`, minus every `EXDATE` — use `occurrences(event)`. It returns
+date-times in ascending order with duplicates removed.
 
 ## Trying it
 

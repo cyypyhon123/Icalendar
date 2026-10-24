@@ -128,3 +128,14 @@ pub fn expand_dates(rule : RecurrenceRule, dtstart : Date) -> Array[Date] raise 
 pub fn with_until(rule : RecurrenceRule, u : DateTime) -> RecurrenceRule {
   rule.with_until(u)
 }
+
+/// Parse a comma-separated RDATE / EXDATE list into date-times.
+pub fn parse_date_list(s : String) -> Array[DateTime] raise IcalError {
+  @lib.parse_date_list(s)
+}
+
+/// The complete recurrence set of a DATE-TIME event (DTSTART + RRULE + RDATE,
+/// minus EXDATE, sorted and de-duplicated).
+pub fn occurrences(ev : Component) -> Array[DateTime] raise IcalError {
+  @lib.occurrences(ev)
+}
