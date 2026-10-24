@@ -93,3 +93,8 @@ pub fn parse_rrule(s : String) -> RecurrenceRule raise IcalError {
 pub fn expand(rule : RecurrenceRule, dtstart : DateTime) -> Array[DateTime] raise IcalError {
   @lib.expand(rule, dtstart)
 }
+
+/// Expand a recurrence rule whose DTSTART is a whole-day DATE into concrete dates.
+pub fn expand_dates(rule : RecurrenceRule, dtstart : Date) -> Array[Date] raise IcalError {
+  @lib.expand_dates(rule, dtstart)
+}

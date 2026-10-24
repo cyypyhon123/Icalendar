@@ -116,6 +116,40 @@ test "byweekno is only valid with yearly frequency" {
   assert_true(caught)
 }
 
+fn date_strs(dates : Array[Date]) -> Array[String] {
+  let out : Array[String] = []
+  let mut i = 0
+  while i < dates.length() {
+    out.push(dates[i].to_string())
+    i = i + 1
+  }
+  out
+}
+
+test "expand_dates handles an all-day yearly rule" {
+  let r = parse_rrule("FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=15;COUNT=3")
+  let d = parse_date("19900315")
+  assert_eq(date_strs(expand_dates(r, d)), ["19900315", "19910315", "19920315"])
+}
+
+test "expand_dates handles an all-day weekly rule" {
+  let r = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=4")
+  let d = parse_date("20261026")
+  assert_eq(date_strs(expand_dates(r, d)), ["20261026", "20261028", "20261030", "20261102"])
+}
+
+test "expand_dates rejects a time-of-day part" {
+  let r = parse_rrule("FREQ=DAILY;BYHOUR=9;COUNT=3")
+  let d = parse_date("20261024")
+  let caught = try {
+    let _ = expand_dates(r, d)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(caught)
+}
+
 test "hourly stepping" {
   let r = parse_rrule("FREQ=HOURLY;COUNT=3")
   let dt = parse_date_time("20261024T080000Z")

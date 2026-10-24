@@ -26,6 +26,24 @@ pub fn expand(rule : RecurrenceRule, dtstart : DateTime) -> Array[DateTime] rais
   }
 }
 
+/// Expand a recurrence rule whose DTSTART is a whole-day DATE (an all-day
+/// event) into concrete dates. The time-of-day is ignored, so BYHOUR /
+/// BYMINUTE / BYSECOND are rejected rather than silently ignored.
+pub fn expand_dates(rule : RecurrenceRule, dtstart : Date) -> Array[Date] raise IcalError {
+  if rule.byhour.length() > 0 || rule.byminute.length() > 0 || rule.bysecond.length() > 0 {
+    raise IcalError::BadLine("BYHOUR/BYMINUTE/BYSECOND are not valid for a DATE-valued DTSTART")
+  }
+  let dt = DateTime::new(dtstart, Time::new(0, 0, 0, true))
+  let occ = expand(rule, dt)
+  let out : Array[Date] = []
+  let mut i = 0
+  while i < occ.length() {
+    out.push(occ[i].date)
+    i = i + 1
+  }
+  out
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------

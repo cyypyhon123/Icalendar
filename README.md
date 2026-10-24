@@ -54,6 +54,10 @@ FREQ=YEARLY;BYWEEKNO=20;BYDAY=MO      Monday of ISO week 20, every year
 FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1   the last weekday
 ```
 
+For all-day events whose `DTSTART` is a `DATE` (a birthday, a holiday), use
+`expand_dates(rule, start)` to get `DATE`s directly — the time-of-day is
+dropped, so `BYHOUR` / `BYMINUTE` / `BYSECOND` are rejected.
+
 ## Trying it
 
 `moon run cmd` parses a small calendar embedded in the demo, expands each
@@ -66,8 +70,7 @@ holds standalone `.ics` files (`standup.ics`, `board-meeting.ics`,
 This is a parsing/serialization/recurrence library, not a scheduling server.
 Timezone resolution through `VTIMEZONE` (local-time `DTSTART` values are kept
 verbatim rather than converted) and the iTIP invitation protocol are out of
-scope for now; `DATE`-valued recurrences are parsed but `expand` operates on
-`DATE-TIME` starts.
+scope for now.
 
 ## License
 
