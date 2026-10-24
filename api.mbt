@@ -18,6 +18,8 @@ pub type Freq = @lib.Freq
 pub type Weekday = @lib.Weekday
 pub type ByDay = @lib.ByDay
 pub type RecurrenceRule = @lib.RecurrenceRule
+pub type Observance = @lib.Observance
+pub type VTimezone = @lib.VTimezone
 pub type IcalError = @lib.IcalError
 
 // -- Content lines --------------------------------------------------------
@@ -68,6 +70,23 @@ pub fn parse_duration(s : String) -> Duration raise IcalError {
 /// Parse an RFC 5545 `PERIOD` value.
 pub fn parse_period(s : String) -> Period raise IcalError {
   @lib.parse_period(s)
+}
+
+/// Parse an RFC 5545 `UTC-OFFSET` value into signed seconds east of UTC.
+pub fn parse_utc_offset(s : String) -> Int raise IcalError {
+  @lib.parse_utc_offset(s)
+}
+
+/// Format signed seconds east of UTC back to a `UTC-OFFSET` value.
+pub fn format_utc_offset(secs : Int) -> String {
+  @lib.format_utc_offset(secs)
+}
+
+// -- Timezones ------------------------------------------------------------
+
+/// Parse a VTIMEZONE component into its typed observances.
+pub fn parse_timezone(comp : Component) -> VTimezone raise IcalError {
+  @lib.parse_timezone(comp)
 }
 
 // -- Components -----------------------------------------------------------

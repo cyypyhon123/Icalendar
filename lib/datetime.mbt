@@ -223,3 +223,55 @@ fn pad4(n : Int) -> String {
     "\{n}"
   }
 }
+
+// -- UTC offset -----------------------------------------------------------
+
+/// Parse an RFC 5545 `UTC-OFFSET` value (`+HHMM`, `-HHMM`, `+HHMMSS` or
+/// `-HHMMSS`) into signed seconds east of UTC.
+pub fn parse_utc_offset(s : String) -> Int raise IcalError {
+  let b = @utf8.encode(s)
+  let n = b.length()
+  if n != 5 && n != 7 {
+    raise IcalError::BadLine("UTC-OFFSET must be +HHMM[SS] or -HHMM[SS]: \{s}")
+  }
+  let sign = if b[0].to_int() == 0x2B {
+    1
+  } else if b[0].to_int() == 0x2D {
+    -1
+  } else {
+    raise IcalError::BadLine("UTC-OFFSET must start with + or -: \{s}")
+  }
+  let hh = offset_digits(b, 1)
+  let mm = offset_digits(b, 3)
+  let mut ss = 0
+  if n == 7 {
+    ss = offset_digits(b, 5)
+  }
+  if hh > 23 || mm > 59 || ss > 59 {
+    raise IcalError::BadLine("UTC-OFFSET out of range: \{s}")
+  }
+  sign * (hh * 3600 + mm * 60 + ss)
+}
+
+/// Format signed seconds east of UTC back to a `UTC-OFFSET` value.
+pub fn format_utc_offset(secs : Int) -> String {
+  let sign = if secs < 0 { "-" } else { "+" }
+  let a = if secs < 0 { -secs } else { secs }
+  let hh = a / 3600
+  let mm = (a % 3600) / 60
+  let ss = a % 60
+  if ss != 0 {
+    sign + pad2(hh) + pad2(mm) + pad2(ss)
+  } else {
+    sign + pad2(hh) + pad2(mm)
+  }
+}
+
+fn offset_digits(b : Bytes, i : Int) -> Int raise IcalError {
+  let c0 = b[i].to_int()
+  let c1 = b[i + 1].to_int()
+  if c0 < 0x30 || c0 > 0x39 || c1 < 0x30 || c1 > 0x39 {
+    raise IcalError::BadLine("expected two digits in UTC-OFFSET")
+  }
+  (c0 - 0x30) * 10 + (c1 - 0x30)
+}
