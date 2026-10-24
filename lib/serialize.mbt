@@ -1,8 +1,9 @@
 ///|
-/// Serialization: turn components back into `.ics` text. Property values are
-/// TEXT-escaped, parameter values that contain `:`, `;` or `,` are re-quoted,
-/// and content lines longer than 75 octets are folded (continuation lines
-/// begin with a single space, per RFC 5545 §3.1).
+/// Serialization: turn components back into `.ics` text. TEXT-valued property
+/// values are escaped (`\\`, `\;`, `\,`, newline); other value types (RRULE,
+/// DATE-TIME, DURATION, PERIOD, CAL-ADDRESS, ...) are emitted verbatim, since
+/// their `;` and `,` are structural. Parameter values that contain `:`, `;` or
+/// `,` are re-quoted, and content lines longer than 75 octets are folded.
 
 /// Format one parameter group as `NAME=value[,value...]`.
 pub fn Param::to_string(self : Param) -> String {
@@ -26,7 +27,12 @@ pub fn Property::to_string(self : Property) -> String {
     out = out + ";" + self.params[i].to_string()
     i = i + 1
   }
-  out + ":" + escape_text(self.value)
+  let value = if is_text_value(self.name) {
+    escape_text(self.value)
+  } else {
+    self.value
+  }
+  out + ":" + value
 }
 
 /// Format a component (and its children) as full `.ics` text with CRLF line
@@ -49,6 +55,17 @@ pub fn Component::to_string(self : Component) -> String {
 /// Serialize a VCALENDAR root to `.ics` text.
 pub fn serialize_calendar(cal : Component) -> String {
   cal.to_string()
+}
+
+/// Whether a property holds a TEXT value that needs `\\`/`\;`/`\,` escaping.
+/// The common TEXT properties are listed explicitly and any `X-` property is
+/// assumed to be TEXT by default (per RFC 5545); everything else is non-TEXT.
+fn is_text_value(name : String) -> Bool {
+  if name == "SUMMARY" || name == "DESCRIPTION" || name == "COMMENT" || name == "LOCATION" || name == "CONTACT" || name == "CATEGORIES" || name == "RESOURCES" || name == "REQUEST-STATUS" {
+    return true
+  }
+  let b = @utf8.encode(name)
+  b.length() >= 2 && b[0].to_int() == 0x58 && b[1].to_int() == 0x2D
 }
 
 /// Wrap a parameter value in quotes when it contains a character that would

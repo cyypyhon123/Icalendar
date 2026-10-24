@@ -47,3 +47,23 @@ test "long lines are folded and unfold back to the original" {
   assert_eq(lines[1], "DESCRIPTION:" + v)
   assert_eq(lines[2], "END:VEVENT")
 }
+
+test "an RRULE value keeps its ; and , separators on round-trip" {
+  let ics =
+    "BEGIN:VCALENDAR\n" +
+    "VERSION:2.0\n" +
+    "BEGIN:VEVENT\n" +
+    "UID:r@example.com\n" +
+    "DTSTART:20261026T093000Z\n" +
+    "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10\n" +
+    "END:VEVENT\n" +
+    "END:VCALENDAR\n"
+  let cal = parse_calendar(ics)
+  let ev = cal.children_named("VEVENT")[0]
+  assert_eq(ev.get("RRULE").unwrap().value, "FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10")
+  let cal2 = parse_calendar(cal.to_string())
+  let ev2 = cal2.children_named("VEVENT")[0]
+  assert_eq(ev2.get("RRULE").unwrap().value, "FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10")
+  let occ = expand(parse_rrule(ev2.get("RRULE").unwrap().value), parse_date_time("20261026T093000Z"))
+  assert_eq(occ.length(), 10)
+}
