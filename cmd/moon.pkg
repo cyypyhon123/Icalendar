@@ -1,0 +1,5 @@
+import {
+  "icalendar/lib" @ical,
+}
+
+pkgtype(kind: "executable")
