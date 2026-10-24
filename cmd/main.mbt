@@ -1,6 +1,8 @@
 ///|
 /// Runnable demo: parse a small calendar, pull out each event, expand its
-/// recurrence rule, and show the whole thing serialized back out again.
+/// recurrence rule, and show the whole thing serialized back out again. It
+/// also walks a DATE-valued (all-day) event and resolves a local time through
+/// a VTIMEZONE.
 ///
 /// Run with: `moon run cmd`
 
@@ -30,6 +32,36 @@ let sample : String =
   "END:VEVENT\n" +
   "END:VCALENDAR\n"
 
+let birthday : String =
+  "BEGIN:VCALENDAR\n" +
+  "VERSION:2.0\n" +
+  "BEGIN:VEVENT\n" +
+  "UID:birthday@example.com\n" +
+  "DTSTART;VALUE=DATE:19900315\n" +
+  "SUMMARY:Sam's birthday\n" +
+  "RRULE:FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=15;COUNT=3\n" +
+  "END:VEVENT\n" +
+  "END:VCALENDAR\n"
+
+let timezone : String =
+  "BEGIN:VCALENDAR\n" +
+  "BEGIN:VTIMEZONE\n" +
+  "TZID:America/New_York\n" +
+  "BEGIN:DAYLIGHT\n" +
+  "DTSTART:20070311T020000\n" +
+  "TZOFFSETFROM:-0500\n" +
+  "TZOFFSETTO:-0400\n" +
+  "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU\n" +
+  "END:DAYLIGHT\n" +
+  "BEGIN:STANDARD\n" +
+  "DTSTART:20071104T020000\n" +
+  "TZOFFSETFROM:-0400\n" +
+  "TZOFFSETTO:-0500\n" +
+  "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU\n" +
+  "END:STANDARD\n" +
+  "END:VTIMEZONE\n" +
+  "END:VCALENDAR\n"
+
 fn main {
   let cal = try {
     @ical.parse_calendar(sample)
@@ -48,6 +80,44 @@ fn main {
   }
   println("--- round-trip ---\n")
   println(@ical.serialize_calendar(cal))
+
+  show_birthday()
+  show_timezone()
+}
+
+fn show_birthday() -> Unit {
+  println("\n--- all-day event (DATE DTSTART) ---\n")
+  let _ = try {
+    let bcal = @ical.parse_calendar(birthday)
+    let ev = bcal.children_named("VEVENT")[0]
+    let start = ev.get("DTSTART").unwrap().as_date()
+    let rule = @ical.parse_rrule(ev.get("RRULE").unwrap().value)
+    let dates = @ical.expand_dates(rule, start)
+    println("\{ev.get("SUMMARY").unwrap().value}")
+    println("  starts \{start.to_string()} (all day)")
+    let mut i = 0
+    while i < dates.length() {
+      println("    - \{dates[i].to_string()}")
+      i = i + 1
+    }
+  } catch {
+    e => println("could not show birthday: \{e.message()}")
+  }
+}
+
+fn show_timezone() -> Unit {
+  println("\n--- timezone resolution ---\n")
+  let _ = try {
+    let tcal = @ical.parse_calendar(timezone)
+    let tz = @ical.parse_timezone(tcal.children_named("VTIMEZONE")[0])
+    let summer = @ical.to_utc(@ical.parse_date_time("20260815T120000"), tz)
+    let winter = @ical.to_utc(@ical.parse_date_time("20260215T120000"), tz)
+    println("\{tz.tzid}")
+    println("  20260815T120000 (local) -> \{summer.to_string()}")
+    println("  20260215T120000 (local) -> \{winter.to_string()}")
+  } catch {
+    e => println("could not show timezone: \{e.message()}")
+  }
 }
 
 fn print_event(ev : @ical.Component) -> Unit {
