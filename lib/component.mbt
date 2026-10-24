@@ -21,6 +21,17 @@ pub struct Component {
   children : Array[Component]
 }
 
+/// Construct a property. (Read-only structs are only constructible here, so
+/// this is the public way to build one.)
+pub fn Property::new(name : String, params : Array[Param], value : String) -> Property {
+  { name, params, value }
+}
+
+/// Construct a component with no children.
+pub fn Component::new(name : String, properties : Array[Property], children : Array[Component]) -> Component {
+  { name, properties, children }
+}
+
 /// Parse a whole `.ics` stream into the root VCALENDAR component.
 pub fn parse_calendar(text : String) -> Component raise IcalError {
   let lines = unfold(text)

@@ -20,6 +20,12 @@ pub struct ContentLine {
   value : String
 }
 
+/// Construct a parameter group. (Read-only structs are only constructible
+/// here, so this is the public way to build one.)
+pub fn Param::new(name : String, values : Array[String]) -> Param {
+  { name, values }
+}
+
 /// A structural problem in a content line (missing name/colon, unterminated
 /// quote, ...). The payload names the offending input.
 pub(all) suberror IcalError {
