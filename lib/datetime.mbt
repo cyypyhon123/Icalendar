@@ -30,6 +30,31 @@ pub struct DateTime {
   time : Time
 }
 
+/// Construct a DATE, validating the month and day-of-month (leap-year aware).
+pub fn Date::new(year : Int, month : Int, day : Int) -> Date raise IcalError {
+  validate_date(year, month, day)
+  { year, month, day }
+}
+
+/// Construct a TIME, validating the hour/minute/second ranges.
+pub fn Time::new(hour : Int, minute : Int, second : Int, utc : Bool) -> Time raise IcalError {
+  if hour < 0 || hour > 23 {
+    raise IcalError::BadLine("invalid hour: \{hour}")
+  }
+  if minute < 0 || minute > 59 {
+    raise IcalError::BadLine("invalid minute: \{minute}")
+  }
+  if second < 0 || second > 60 {
+    raise IcalError::BadLine("invalid second: \{second}")
+  }
+  { hour, minute, second, utc }
+}
+
+/// Construct a DATE-TIME from an already-valid DATE and TIME.
+pub fn DateTime::new(date : Date, time : Time) -> DateTime {
+  { date, time }
+}
+
 fn digit(b : Bytes, i : Int) -> Int raise IcalError {
   if i >= b.length() {
     raise IcalError::BadLine("value ended early")
@@ -53,11 +78,13 @@ fn digits(b : Bytes, i : Int, count : Int) -> (Int, Int) raise IcalError {
   (v, idx)
 }
 
-fn is_leap(year : Int) -> Bool {
+/// Whether `year` is a leap year in the proleptic Gregorian calendar.
+pub fn is_leap(year : Int) -> Bool {
   (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }
 
-fn days_in_month(year : Int, month : Int) -> Int {
+/// Number of days in `month` (1..12) of `year`, 0 for an out-of-range month.
+pub fn days_in_month(year : Int, month : Int) -> Int {
   if month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12 {
     31
   } else if month == 4 || month == 6 || month == 9 || month == 11 {
