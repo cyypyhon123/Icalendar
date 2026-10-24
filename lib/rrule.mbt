@@ -192,6 +192,27 @@ pub fn RecurrenceRule::to_string(self : RecurrenceRule) -> String {
   out
 }
 
+/// A copy of the rule with its UNTIL replaced by `u`. Useful for expanding an
+/// otherwise-unbounded rule (e.g. a VTIMEZONE transition rule) up to a bound.
+pub fn RecurrenceRule::with_until(self : RecurrenceRule, u : DateTime) -> RecurrenceRule {
+  {
+    freq: self.freq,
+    interval: self.interval,
+    count: self.count,
+    until: Some(u),
+    bysecond: self.bysecond,
+    byminute: self.byminute,
+    byhour: self.byhour,
+    byday: self.byday,
+    bymonthday: self.bymonthday,
+    byyearday: self.byyearday,
+    byweekno: self.byweekno,
+    bymonth: self.bymonth,
+    bysetpos: self.bysetpos,
+    wkst: self.wkst
+  }
+}
+
 fn freq_of_code(c : String) -> Freq raise IcalError {
   if c == "SECONDLY" {
     Freq::Secondly

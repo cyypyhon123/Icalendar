@@ -89,6 +89,11 @@ pub fn parse_timezone(comp : Component) -> VTimezone raise IcalError {
   @lib.parse_timezone(comp)
 }
 
+/// Convert a floating (local) date-time to UTC using a parsed VTIMEZONE.
+pub fn to_utc(loc : DateTime, tz : VTimezone) -> DateTime raise IcalError {
+  @lib.to_utc(loc, tz)
+}
+
 // -- Components -----------------------------------------------------------
 
 /// Parse a whole `.ics` stream into a component tree.
@@ -116,4 +121,10 @@ pub fn expand(rule : RecurrenceRule, dtstart : DateTime) -> Array[DateTime] rais
 /// Expand a recurrence rule whose DTSTART is a whole-day DATE into concrete dates.
 pub fn expand_dates(rule : RecurrenceRule, dtstart : Date) -> Array[Date] raise IcalError {
   @lib.expand_dates(rule, dtstart)
+}
+
+/// A copy of the rule with its UNTIL replaced, for expanding an unbounded rule
+/// up to a bound.
+pub fn with_until(rule : RecurrenceRule, u : DateTime) -> RecurrenceRule {
+  rule.with_until(u)
 }

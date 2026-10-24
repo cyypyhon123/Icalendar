@@ -91,3 +91,92 @@ fn split_on_comma(s : String) -> Array[String] {
   out.push(@utf8.decode_lossy(b[start:n]))
   out
 }
+
+/// Convert a floating (local) date-time to UTC using this timezone's
+/// observances. The offset in effect is found by expanding each observance's
+/// transitions to UTC and walking them by fixed-point iteration. Ambiguous
+/// local times (the fall-back overlap) resolve deterministically; non-existent
+/// local times (the spring-forward gap) shift forward.
+pub fn to_utc(loc : DateTime, tz : VTimezone) -> DateTime raise IcalError {
+  let obs = tz.observances
+  if obs.length() == 0 {
+    raise IcalError::BadLine("VTIMEZONE has no observances")
+  }
+  let lo_year = loc.date.year - 1
+  let hi_year = loc.date.year + 1
+  let hi = DateTime::new(Date::new(hi_year, 12, 31), Time::new(23, 59, 59, false))
+  let trans : Array[Int] = []
+  let after : Array[Int] = []
+  let mut i = 0
+  while i < obs.length() {
+    let o = obs[i]
+    let locals : Array[DateTime] = []
+    match o.rrule {
+      Some(r) => {
+        let occ = expand(r.with_until(hi), o.dtstart)
+        let mut k = 0
+        while k < occ.length() {
+          locals.push(occ[k])
+          k = k + 1
+        }
+      }
+      None => locals.push(o.dtstart)
+    }
+    let mut r = 0
+    while r < o.rdates.length() {
+      locals.push(o.rdates[r])
+      r = r + 1
+    }
+    let mut t = 0
+    while t < locals.length() {
+      let l = locals[t]
+      if l.date.year >= lo_year && l.date.year <= hi_year {
+        trans.push(dt_to_seconds(l) - o.offset_from)
+        after.push(o.offset_to)
+      }
+      t = t + 1
+    }
+    i = i + 1
+  }
+  sort_pairs(trans, after)
+  let mut offset = obs[0].offset_to
+  let local_secs = dt_to_seconds(loc)
+  let mut it = 0
+  while it < 4 {
+    let u = local_secs - offset
+    let mut chosen = offset
+    let mut j = 0
+    while j < trans.length() {
+      if trans[j] <= u {
+        chosen = after[j]
+      } else {
+        break
+      }
+      j = j + 1
+    }
+    if chosen == offset {
+      break
+    }
+    offset = chosen
+    it = it + 1
+  }
+  seconds_to_dt(local_secs - offset, true)
+}
+
+/// Sort `a` ascending, carrying `b` along (insertion sort, both in place).
+fn sort_pairs(a : Array[Int], b : Array[Int]) -> Unit {
+  let mut i = 1
+  while i < a.length() {
+    let ka = a[i]
+    let kb = b[i]
+    let mut j = i - 1
+    while j >= 0 && a[j] > ka {
+      a[j + 1] = a[j]
+      b[j + 1] = b[j]
+      j = j - 1
+    }
+    a[j + 1] = ka
+    b[j + 1] = kb
+    i = i + 1
+  }
+}

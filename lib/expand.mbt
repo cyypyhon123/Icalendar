@@ -848,10 +848,13 @@ fn subdaily_matches(rule : RecurrenceRule, dt : DateTime) -> Bool {
   true
 }
 
+/// Interpret a date-time as seconds since 1970-01-01 00:00:00, ignoring any
+/// zone — the date and time are read as-is.
 fn dt_to_seconds(dt : DateTime) -> Int {
   day_number(dt.date.year, dt.date.month, dt.date.day) * 86400 + dt.time.hour * 3600 + dt.time.minute * 60 + dt.time.second
 }
 
+/// The inverse of `dt_to_seconds`: seconds since the epoch back to a date-time.
 fn seconds_to_dt(secs : Int, utc : Bool) -> DateTime raise IcalError {
   let day = floor_div(secs, 86400)
   let rem = secs - day * 86400

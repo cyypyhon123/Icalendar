@@ -14,7 +14,8 @@ An iCalendar document is a tree of *components* (`VCALENDAR` containing
 - parses and formats the DATE / TIME / DATE-TIME / DURATION / PERIOD value types,
 - builds a component tree you can query (`children_named`, `get`, typed accessors),
 - serializes it back with correct 75-octet line folding,
-- parses recurrence rules (`RRULE`) and expands them into concrete occurrences.
+- parses recurrence rules (`RRULE`) and expands them into concrete occurrences,
+- parses `VTIMEZONE` components and resolves floating times to UTC through them.
 
 ## A taste
 
@@ -68,9 +69,7 @@ holds standalone `.ics` files (`standup.ics`, `board-meeting.ics`,
 ## Boundaries
 
 This is a parsing/serialization/recurrence library, not a scheduling server.
-Timezone resolution through `VTIMEZONE` (local-time `DTSTART` values are kept
-verbatim rather than converted) and the iTIP invitation protocol are out of
-scope for now.
+The iTIP invitation protocol (scheduling messages) is out of scope for now.
 
 ## License
 

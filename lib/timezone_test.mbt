@@ -85,3 +85,66 @@ test "parse_observance collects rdate transitions" {
   assert_eq(obs.rdates[0].to_string(), "20010101T000000")
   assert_eq(obs.rdates[1].to_string(), "20020101T000000")
 }
+
+fn ny_timezone() -> VTimezone raise IcalError {
+  let cal = parse_calendar(
+    "BEGIN:VCALENDAR\n" +
+    "BEGIN:VTIMEZONE\n" +
+    "TZID:America/New_York\n" +
+    "BEGIN:DAYLIGHT\n" +
+    "DTSTART:20070311T020000\n" +
+    "TZOFFSETFROM:-0500\n" +
+    "TZOFFSETTO:-0400\n" +
+    "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU\n" +
+    "END:DAYLIGHT\n" +
+    "BEGIN:STANDARD\n" +
+    "DTSTART:20071104T020000\n" +
+    "TZOFFSETFROM:-0400\n" +
+    "TZOFFSETTO:-0500\n" +
+    "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU\n" +
+    "END:STANDARD\n" +
+    "END:VTIMEZONE\n" +
+    "END:VCALENDAR\n"
+  )
+  parse_timezone(cal.children_named("VTIMEZONE")[0])
+}
+
+test "to_utc applies a fixed offset" {
+  let cal = parse_calendar(
+    "BEGIN:VCALENDAR\n" +
+    "BEGIN:VTIMEZONE\n" +
+    "TZID:Asia/Shanghai\n" +
+    "BEGIN:STANDARD\n" +
+    "DTSTART:19700101T000000\n" +
+    "TZOFFSETFROM:+0800\n" +
+    "TZOFFSETTO:+0800\n" +
+    "END:STANDARD\n" +
+    "END:VTIMEZONE\n" +
+    "END:VCALENDAR\n"
+  )
+  let tz = parse_timezone(cal.children_named("VTIMEZONE")[0])
+  let utc = to_utc(parse_date_time("20260115T120000"), tz)
+  assert_eq(utc.to_string(), "20260115T040000Z")
+}
+
+test "to_utc follows daylight saving transitions" {
+  let tz = ny_timezone()
+  let winter = to_utc(parse_date_time("20260215T120000"), tz)
+  assert_eq(winter.to_string(), "20260215T170000Z")
+  let summer = to_utc(parse_date_time("20260815T120000"), tz)
+  assert_eq(summer.to_string(), "20260815T160000Z")
+}
+
+test "to_utc rejects a timezone with no observances" {
+  let cal = parse_calendar(
+    "BEGIN:VCALENDAR\nBEGIN:VTIMEZONE\nTZID:Empty/Zone\nEND:VTIMEZONE\nEND:VCALENDAR\n"
+  )
+  let tz = parse_timezone(cal.children_named("VTIMEZONE")[0])
+  let caught = try {
+    let _ = to_utc(parse_date_time("20260115T120000"), tz)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(caught)
+}
