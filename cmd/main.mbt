@@ -1,52 +1,91 @@
 ///|
-/// Runnable demo: unfold a small .ics stream and show how each line parses
-/// into name, parameters and value.
+/// Runnable demo: parse a small calendar, pull out each event, expand its
+/// recurrence rule, and show the whole thing serialized back out again.
 ///
 /// Run with: `moon run cmd`
 
 let sample : String =
-  "BEGIN:VCALENDAR\r\n" +
-  "VERSION:2.0\r\n" +
-  "PRODID:-//Example//Calendar//EN\r\n" +
-  "BEGIN:VEVENT\r\n" +
-  "UID:1234@example.com\r\n" +
-  "DTSTART;TZID=Asia/Shanghai:20261024T093000\r\n" +
-  "SUMMARY:Team standup\r\n" +
-  "DESCRIPTION:Discuss the weekly plan\\nBring coffee\r\n" +
-  "ATTENDEE;CN=Alice;ROLE=REQ-PARTICIPANT:mailto:alice@example.com\r\n" +
-  "END:VEVENT\r\n" +
-  "END:VCALENDAR\r\n"
+  "BEGIN:VCALENDAR\n" +
+  "VERSION:2.0\n" +
+  "PRODID:-//icalendar demo//EN\n" +
+  "BEGIN:VEVENT\n" +
+  "UID:standup@example.com\n" +
+  "DTSTART:20261026T093000Z\n" +
+  "DTEND:20261026T100000Z\n" +
+  "SUMMARY:Team standup\n" +
+  "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10\n" +
+  "END:VEVENT\n" +
+  "BEGIN:VEVENT\n" +
+  "UID:board@example.com\n" +
+  "DTSTART:20261102T090000Z\n" +
+  "DTEND:20261102T110000Z\n" +
+  "SUMMARY:Board meeting\n" +
+  "DESCRIPTION:Quarterly review\\nBring the slides\n" +
+  "RRULE:FREQ=MONTHLY;BYDAY=1MO;COUNT=6\n" +
+  "BEGIN:VALARM\n" +
+  "ACTION:DISPLAY\n" +
+  "TRIGGER:-PT15M\n" +
+  "DESCRIPTION:Reminder\n" +
+  "END:VALARM\n" +
+  "END:VEVENT\n" +
+  "END:VCALENDAR\n"
 
 fn main {
-  let lines = @ical.unfold(sample)
-  println("unfolded \{lines.length()} logical content line(s):\n")
-  let mut description = ""
-  let mut i = 0
-  while i < lines.length() {
-    let _ = try {
-      let cl = @ical.parse_content_line(lines[i])
-      println("  \{cl.name}\{render_params(cl.params)}: \{cl.value}")
-      if cl.name == "DESCRIPTION" {
-        description = cl.value
-      }
-    } catch {
-      e => println("  (parse error: \{e.message()})")
+  let cal = try {
+    @ical.parse_calendar(sample)
+  } catch {
+    e => {
+      println("could not parse calendar: \{e.message()}")
+      return
     }
+  }
+  let events = cal.children_named("VEVENT")
+  println("Parsed a VCALENDAR with \{events.length()} event(s):\n")
+  let mut i = 0
+  while i < events.length() {
+    print_event(events[i])
     i = i + 1
   }
-  println("\nDESCRIPTION after unescaping: \{@ical.unescape_text(description)}")
+  println("--- round-trip ---\n")
+  println(@ical.serialize_calendar(cal))
 }
 
-fn render_params(params : Array[@ical.Param]) -> String {
-  if params.length() == 0 {
-    return ""
+fn print_event(ev : @ical.Component) -> Unit {
+  let summary = match ev.get("SUMMARY") {
+    Some(p) => p.value
+    None => "(no summary)"
   }
-  let mut s = ""
-  let mut i = 0
-  while i < params.length() {
-    let p = params[i]
-    s = s + ";" + p.name + "=" + p.values[0]
-    i = i + 1
+  let start = match ev.get("DTSTART") {
+    Some(p) => try {
+      p.as_date_time().to_string()
+    } catch {
+      _ => p.value
+    }
+    None => "(no start)"
   }
-  s
+  println("\{summary}")
+  println("  starts \{start}")
+  match ev.get("RRULE") {
+    Some(p) => {
+      let _ = try {
+        let rule = @ical.parse_rrule(p.value)
+        let dtstart = ev.get("DTSTART").unwrap().as_date_time()
+        let occ = @ical.expand(rule, dtstart)
+        println("  rule   \{rule.to_string()}")
+        println("  first \{occ.length()} occurrence(s):")
+        let mut i = 0
+        while i < occ.length() && i < 6 {
+          println("    - \{occ[i].to_string()}")
+          i = i + 1
+        }
+        if occ.length() > 6 {
+          println("    ...")
+        }
+      } catch {
+        e => println("  (could not expand rule: \{e.message()})")
+      }
+    }
+    None => ()
+  }
+  println("")
 }
