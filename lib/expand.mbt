@@ -6,7 +6,7 @@
 /// sequence is infinite and `expand` raises. Supported parts are FREQ (all
 /// seven), INTERVAL, COUNT, UNTIL, WKST, BYMONTH, BYMONTHDAY, BYDAY (with
 /// month ordinals for MONTHLY/YEARLY), BYYEARDAY, BYHOUR, BYMINUTE, BYSECOND
-/// and BYSETPOS (for date-level frequencies). BYWEEKNO is not expanded yet.
+/// and BYSETPOS (for date-level frequencies), and BYWEEKNO (for YEARLY).
 
 /// Expand a recurrence rule from its start instant.
 pub fn expand(rule : RecurrenceRule, dtstart : DateTime) -> Array[DateTime] raise IcalError {
@@ -51,8 +51,10 @@ fn validate_rule(rule : RecurrenceRule) -> Unit raise IcalError {
   all_in(rule.bysetpos, -366, 366, "BYSETPOS")
   all_nonzero(rule.bysetpos, "BYSETPOS")
   valid_ordinals(rule.byday)
-  if rule.byweekno.length() > 0 {
-    raise IcalError::BadLine("BYWEEKNO is not supported yet")
+  all_in(rule.byweekno, -53, 53, "BYWEEKNO")
+  all_nonzero(rule.byweekno, "BYWEEKNO")
+  if rule.byweekno.length() > 0 && rule.freq != Freq::Yearly {
+    raise IcalError::BadLine("BYWEEKNO is only valid with FREQ=YEARLY")
   }
 }
 
@@ -231,6 +233,21 @@ fn nth_weekday_of_year(y : Int, wd : Int, ordinal : Int) -> Int {
     doy = doy - 1
   }
   return -1
+}
+
+/// The first day (on WKST) of ISO week 1 in a week-year. Jan 4 is always in
+/// week 1, so week 1 starts on the WKST-day on or before Jan 4.
+fn week1_start(y : Int, wkst : Int) -> (Int, Int, Int) {
+  let jan4_wd = weekday_index(y, 1, 4)
+  let offset = (jan4_wd - wkst + 7) % 7
+  add_days(y, 1, 4, -offset)
+}
+
+/// Number of ISO weeks in a week-year (52 or 53).
+fn weeks_in_year(y : Int, wkst : Int) -> Int {
+  let (sy, sm, sd) = week1_start(y, wkst)
+  let (ny, nm, nd) = week1_start(y + 1, wkst)
+  (day_number(ny, nm, nd) - day_number(sy, sm, sd)) / 7
 }
 
 // ---------------------------------------------------------------------------
@@ -652,7 +669,36 @@ fn expand_yearly(rule : RecurrenceRule, dtstart : DateTime, interval : Int) -> A
       None => ()
     }
     let set : Array[DateTime] = []
-    if rule.byyearday.length() > 0 {
+    if rule.byweekno.length() > 0 {
+      let wkst = weekday_index_of(rule.wkst)
+      let n = weeks_in_year(y, wkst)
+      let weeks : Array[Int] = []
+      let mut wi = 0
+      while wi < rule.byweekno.length() {
+        let w = rule.byweekno[wi]
+        let actual = if w > 0 { w } else { n + 1 + w }
+        if actual >= 1 && actual <= n {
+          weeks.push(actual)
+        }
+        wi = wi + 1
+      }
+      let sw = sorted_unique(weeks)
+      let mut si = 0
+      while si < sw.length() {
+        let actual = sw[si]
+        let (sy, sm, sd) = week1_start(y, wkst)
+        let (wy, wm, wd) = add_days(sy, sm, sd, (actual - 1) * 7)
+        let mut dayoff = 0
+        while dayoff < 7 {
+          let (yy, mm, dd) = add_days(wy, wm, wd, dayoff)
+          if matches_month(rule, mm) && matches_monthday(rule, yy, mm, dd) && matches_weekday(rule, yy, mm, dd) {
+            emit_day(set, yy, mm, dd, hours, minutes, seconds, utc)
+          }
+          dayoff = dayoff + 1
+        }
+        si = si + 1
+      }
+    } else if rule.byyearday.length() > 0 {
       let n = year_days(y)
       let mut i = 0
       while i < rule.byyearday.length() {

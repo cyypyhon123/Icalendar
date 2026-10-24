@@ -42,14 +42,15 @@ as `icalendar/lib`. Both expose the same functions.
 
 The expander handles every `FREQ`, `INTERVAL`, `COUNT`, `UNTIL`, `WKST`,
 `BYMONTH`, `BYMONTHDAY`, `BYDAY` (including `1MO` / `-1FR` ordinals),
-`BYYEARDAY`, `BYHOUR`, `BYMINUTE`, `BYSECOND` and `BYSETPOS`. A rule must be
-bounded by `COUNT` or `UNTIL` — an unbounded sequence is an error, not an
-infinite loop.
+`BYYEARDAY`, `BYWEEKNO` (ISO week numbers, for yearly rules), `BYHOUR`,
+`BYMINUTE`, `BYSECOND` and `BYSETPOS`. A rule must be bounded by `COUNT` or
+`UNTIL` — an unbounded sequence is an error, not an infinite loop.
 
 ```
 FREQ=MONTHLY;BYDAY=1MO;COUNT=6        first Monday of every month, six times
 FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=15   a birthday
 FREQ=WEEKLY;BYDAY=MO,WE,FR            Mondays, Wednesdays, Fridays
+FREQ=YEARLY;BYWEEKNO=20;BYDAY=MO      Monday of ISO week 20, every year
 FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1   the last weekday
 ```
 
@@ -64,9 +65,9 @@ holds standalone `.ics` files (`standup.ics`, `board-meeting.ics`,
 
 This is a parsing/serialization/recurrence library, not a scheduling server.
 Timezone resolution through `VTIMEZONE` (local-time `DTSTART` values are kept
-verbatim rather than converted), `BYWEEKNO` expansion, and the iTIP
-invitation protocol are out of scope for now; `DATE`-valued recurrences are
-parsed but `expand` operates on `DATE-TIME` starts.
+verbatim rather than converted) and the iTIP invitation protocol are out of
+scope for now; `DATE`-valued recurrences are parsed but `expand` operates on
+`DATE-TIME` starts.
 
 ## License
 

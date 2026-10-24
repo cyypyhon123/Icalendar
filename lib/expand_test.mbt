@@ -92,6 +92,30 @@ test "yearly first monday of the year" {
   assert_eq(strs(expand(r, dt)), ["20260105T090000Z", "20270104T090000Z"])
 }
 
+test "yearly byweekno monday of week 20" {
+  let r = parse_rrule("FREQ=YEARLY;BYWEEKNO=20;BYDAY=MO;COUNT=3")
+  let dt = parse_date_time("20260511T090000Z")
+  assert_eq(strs(expand(r, dt)), ["20260511T090000Z", "20270517T090000Z", "20280515T090000Z"])
+}
+
+test "yearly negative byweekno picks the last week" {
+  let r = parse_rrule("FREQ=YEARLY;BYWEEKNO=-1;BYDAY=MO;COUNT=2")
+  let dt = parse_date_time("20261228T090000Z")
+  assert_eq(strs(expand(r, dt)), ["20261228T090000Z", "20271227T090000Z"])
+}
+
+test "byweekno is only valid with yearly frequency" {
+  let r = parse_rrule("FREQ=MONTHLY;BYWEEKNO=20;COUNT=1")
+  let dt = parse_date_time("20260511T090000Z")
+  let caught = try {
+    let _ = expand(r, dt)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(caught)
+}
+
 test "hourly stepping" {
   let r = parse_rrule("FREQ=HOURLY;COUNT=3")
   let dt = parse_date_time("20261024T080000Z")
